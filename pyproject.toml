@@ -1,0 +1,85 @@
+[build-system]
+requires = ["flit_core >=3,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "popver"
+readme = "README.md"
+authors = [
+    {name="Tim Hatch", email="tim@timhatch.com"},
+]
+dynamic = ["version", "description"]
+
+dependencies = [
+    "pypi-simple",
+    "packaging",
+    "click",
+    "seekablehttpfile",
+    "keke",
+]
+requires-python = ">=3.7"
+
+[project.optional-dependencies]
+dev = [
+    "black==23.12.1",
+    "coverage==7.3.2",
+    "flit==3.9.0",
+    "flake8==6.1.0",
+    "mypy==1.7.1",
+    "usort==1.0.7",
+    "ufmt==2.3.0",
+    "thx",
+]
+
+[project.urls]
+Github = "https://github.com/thatch/popver/"
+
+[tool.coverage.run]
+branch = true
+include = ["popver/*"]
+omit = ["popver/tests/*"]
+
+[tool.coverage.report]
+fail_under = 90
+precision = 1
+show_missing = true
+# Avoid a bug in coverage-highlight.vim
+# https://github.com/mgedmin/coverage-highlight.vim/issues/35
+# skip_covered = true
+
+[tool.mypy]
+ignore_missing_imports = true
+python_version = "3.7"
+strict = true
+
+[tool.thx]
+default = ["test", "lint", "coverage"]
+module = "popver"
+srcs = "popver"
+python_versions = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+watch_paths = ["README.md", "docs", "popver"]
+
+[tool.thx.jobs]
+deps = "python -m pessimist -c 'python -m {module}.tests' --fast ."
+#docs = {run="sphinx-build -ab html docs html", once=true}
+format = {run="python -m ufmt format {srcs}", once=true}
+test = "python -m coverage run -m {module}.tests"
+
+[tool.thx.jobs.combine]
+requires = ["test"]
+run = "python -m coverage combine"
+once = true
+
+[tool.thx.jobs.coverage]
+requires = ["combine"]
+run = "python -m coverage report"
+once = true
+show_output = true
+
+[tool.thx.jobs.lint]
+run = [
+    "python -m mypy --install-types --non-interactive -p {module}",
+    "python -m flake8 {srcs}",
+    "python -m ufmt diff {srcs}",
+]
+parallel = true
