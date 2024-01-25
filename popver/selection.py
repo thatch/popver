@@ -48,5 +48,6 @@ def get_sort_key(package, v):
         GOODNESS.get(package.package_type, 0),
         package.filename.endswith(".zip"),
         package.filename,
+        package.url,  # hopefully enough to break ties
         package,
     )

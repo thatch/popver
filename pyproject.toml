@@ -14,7 +14,7 @@ dependencies = [
     "pypi-simple",
     "packaging",
     "click",
-    "seekablehttpfile",
+    "seekablehttpfile >= 0.1.0, < 0.2.0",
     "keke",
 ]
 requires-python = ">=3.7"

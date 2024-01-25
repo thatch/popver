@@ -1,26 +1,34 @@
 import email
+import functools
 from email.message import Message
+from http.client import HTTPResponse
 from io import BytesIO, StringIO
 
 from tarfile import TarFile
 from typing import Optional
 from zipfile import ZipFile
 
-from keke import ktrace
+from keke import kev, ktrace
 from pypi_simple import DistributionPackage
 from requests import Session
 from seekablehttpfile import SeekableHttpFile
+from seekablehttpfile.core import get_range_requests
 
 SESSION = Session()
+get_range_requests_session = functools.partial(get_range_requests, session=SESSION)
 
 
 @ktrace("dp.filename", "dp.url")
 def get_metadata_bytes(dp: DistributionPackage) -> bytes:
+    if dp.has_metadata:
+        with kev("get .metadata"):
+            return SESSION.get(dp.url + ".metadata").content
+
     # This mirrors some logic from pkginfo, but returns the contents rather
     # than a dict-like object.
     if dp.package_type == "wheel":
         # print("W", dp.url)
-        f = SeekableHttpFile(dp.url)
+        f = SeekableHttpFile(dp.url, get_range=get_range_requests_session)
         zf = ZipFile(f)
         # This snippet comes from warehouse itself.
         name, version, _ = dp.filename.split("-", 2)
@@ -28,11 +36,13 @@ def get_metadata_bytes(dp: DistributionPackage) -> bytes:
     elif dp.package_type == "sdist":
         if dp.filename.endswith(".zip"):
             # print("SD", dp.url)
-            f = SeekableHttpFile(dp.url)
+            f = SeekableHttpFile(dp.url, get_range=get_range_requests_session)
             zf = ZipFile(f)
             # Warehouse says this must only have one slash.
             metadata_names = [
-                name for name in zf.namelist() if name.endswith("/PKG-INFO") and name.count("/") == 1
+                name
+                for name in zf.namelist()
+                if name.endswith("/PKG-INFO") and name.count("/") == 1
             ]
             metadata_names.sort(key=lambda x: (x.count("/"), len(x)))
             return zf.read(metadata_names[0])
@@ -42,7 +52,9 @@ def get_metadata_bytes(dp: DistributionPackage) -> bytes:
             archive = TarFile.open(fileobj=data)
             # Warehouse says this must only have one slash.
             metadata_names = [
-                name for name in archive.getnames() if name.endswith("/PKG-INFO") and name.count("/") == 1
+                name
+                for name in archive.getnames()
+                if name.endswith("/PKG-INFO") and name.count("/") == 1
             ]
             metadata_names.sort(key=lambda x: (x.count("/"), len(x)))
             return archive.extractfile(metadata_names[0]).read()
